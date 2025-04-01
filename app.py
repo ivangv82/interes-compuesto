@@ -218,14 +218,14 @@ elif pregunta == "¿Cuánto necesito ahorrar en cada período para lograr mi obj
 elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objetivo de ahorro?":
     st.subheader("¿Qué porcentaje de interés necesito para llegar a mi objetivo?")
 
-    objetivo = st.number_input("Objetivo de ahorro (€)", value=10000.0)
-    inicial = st.number_input("Balance inicial (€)", value=1000.0)
+    objetivo = st.number_input("Objetivo de ahorro (€)", value=35000.0)
+    inicial = st.number_input("Balance inicial (€)", value=5000.0)
     deposito = st.number_input("Depósito periódico (€)", value=100.0)
     años = st.number_input("Duración (años)", value=10)
 
     n = int(años * m)
 
-        # Primero comprobamos si con 0% ya se alcanza
+    # Comprobación previa: ¿ya alcanzamos el objetivo sin interés?
     if momento == "Final del período":
         fv_0 = inicial + deposito * n
     else:
@@ -235,6 +235,7 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
 
     if fv_0 >= objetivo:
         interes_anual_necesario = 0
+        r = 0
         saldo = fv_0
     else:
         def f(i):
@@ -245,7 +246,7 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
             else:
                 return inicial * (1 + i)**n + deposito * (1 + i) * ((1 + i)**n - 1) / i - objetivo
 
-        # Búsqueda binaria para encontrar la tasa periódica necesaria
+        # Bisección para encontrar la tasa periódica i que cumple f(i) ≈ 0
         low = 1e-8
         high = 1.0
         i_sol = None
@@ -262,10 +263,10 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
         else:
             i_sol = mid
 
-        interes_anual_necesario = i_sol * m * 100
-
-        # Recalcular saldo final para la visualización
         r = i_sol
+        interes_anual_necesario = r * m * 100
+
+        # Recalcular saldo final
         saldo = inicial
         for _ in range(n):
             if momento == "Inicio del período":
@@ -274,49 +275,25 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
             if momento == "Final del período":
                 saldo += deposito
 
-        if momento == "Final del período":
-            return inicial * (1 + i)**n + deposito * ((1 + i)**n - 1) / i - objetivo
-        else:
-            return inicial * (1 + i)**n + deposito * (1 + i) * ((1 + i)**n - 1) / i - objetivo
-
-    # Búsqueda binaria para encontrar la tasa periódica necesaria
-    low = 1e-8
-    high = 1.0
-    i_sol = None
-
-    for _ in range(100):
-        mid = (low + high) / 2
-        if abs(f(mid)) < 1e-6:
-            i_sol = mid
-            break
-        if f(low) * f(mid) < 0:
-            high = mid
-        else:
-            low = mid
-    else:
-        i_sol = mid
-
-    interes_anual_necesario = i_sol * m * 100
-
     st.markdown(f"### Necesitas un interés anual de aproximadamente **{interes_anual_necesario:.2f} %**")
     st.markdown(f"Para alcanzar {objetivo:,.2f} € en {años:.0f} años, aportando {deposito:.2f} € cada {frecuencia.lower()}")
 
-    # Simulación de evolución con la tasa encontrada
-    saldo = inicial
+    # Simulación de evolución para visualización
+    saldo_temp = inicial
     historial = []
 
     for periodo in range(1, n + 1):
         if momento == "Inicio del período":
-            saldo += deposito
-        saldo *= (1 + i_sol)
+            saldo_temp += deposito
+        saldo_temp *= (1 + r)
         if momento == "Final del período":
-            saldo += deposito
+            saldo_temp += deposito
         if periodo % m == 0:
             historial.append({
                 "Año": periodo // m,
                 "Depósito acumulado": deposito * periodo,
-                "Interés acumulado": saldo - inicial - deposito * periodo,
-                "Balance": saldo
+                "Interés acumulado": saldo_temp - inicial - deposito * periodo,
+                "Balance": saldo_temp
             })
 
     df = pd.DataFrame(historial)
@@ -344,5 +321,6 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
         "Interés acumulado": "€{:,.2f}",
         "Balance": "€{:,.2f}"
     }))
+
 
 
