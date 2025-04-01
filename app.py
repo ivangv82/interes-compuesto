@@ -145,10 +145,77 @@ elif pregunta == "¿Cuánto tardaré en alcanzar mi objetivo de ahorro?":
         }))
     else:
         st.error("No se alcanzó el objetivo en un plazo razonable (más de 1000 períodos). Revisa los parámetros.")
+
+# ---------- OPCIÓN 3: ¿CUÁNTO NECESITO AHORRAR POR PERÍODO? ----------
+elif pregunta == "¿Cuánto necesito ahorrar en cada período para lograr mi objetivo de ahorro?":
+    st.subheader("¿Cuánto necesito ahorrar en cada período para lograr mi objetivo?")
+
+    objetivo = st.number_input("Objetivo de ahorro (€)", value=10000.0)
+    inicial = st.number_input("Balance inicial (€)", value=1000.0)
+    interes_anual = st.number_input("Ratio de interés anual (%)", value=8.0)
+    años = st.number_input("Duración (años)", value=10)
+
+    r = interes_anual / 100 / m
+    n = int(años * m)
+
+    if r == 0:
+        deposito = (objetivo - inicial) / n
+    else:
+        if momento == "Final del período":
+            deposito = (objetivo - inicial * (1 + r)**n) * r / ((1 + r)**n - 1)
+        else:
+            deposito = (objetivo - inicial * (1 + r)**n) * r / (((1 + r)**n - 1) * (1 + r))
+
+    st.markdown(f"### Necesitas ahorrar **{deposito:,.2f} €** cada {frecuencia.lower()} durante {años:.0f} años")
+    st.markdown(f"Para alcanzar un objetivo de {objetivo:,.2f} €, con un interés anual del {interes_anual}%")
+
+    # Simulación de evolución para visualización
+    saldo = inicial
+    historial = []
+
+    for periodo in range(1, n + 1):
+        if momento == "Inicio del período":
+            saldo += deposito
+        saldo *= (1 + r)
+        if momento == "Final del período":
+            saldo += deposito
+        if periodo % m == 0:
+            historial.append({
+                "Año": periodo // m,
+                "Depósito acumulado": deposito * periodo,
+                "Interés acumulado": saldo - inicial - deposito * periodo,
+                "Balance": saldo
+            })
+
+    df = pd.DataFrame(historial)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Depósito por período", f"{deposito:,.2f} €")
+    col2.metric("Total depositado", f"{deposito * n:,.2f} €")
+    col3.metric("Interés ganado", f"{saldo - inicial - deposito * n:,.2f} €")
+
+    # ---------- GRÁFICO ----------
+    st.subheader("Evolución del capital")
+    fig, ax = plt.subplots()
+    ax.plot(df["Año"], df["Balance"], label="Balance acumulado", marker='o')
+    ax.axhline(y=objetivo, color='g', linestyle='--', label="Objetivo")
+    ax.set_xlabel("Años")
+    ax.set_ylabel("€")
+    ax.set_title("Crecimiento del ahorro para alcanzar el objetivo")
+    ax.legend()
+    st.pyplot(fig)
+
+    # ---------- TABLA ----------
+    st.subheader("Detalle año a año")
+    st.dataframe(df.style.format({
+        "Depósito acumulado": "€{:,.2f}",
+        "Interés acumulado": "€{:,.2f}",
+        "Balance": "€{:,.2f}"
+    }))
+
+
 # ---------- LAS OTRAS OPCIONES (solo texto de momento, luego se mejora) ----------
 
-elif pregunta == "¿Cuánto necesito ahorrar en cada período para lograr mi objetivo de ahorro?":
-    st.info("👉 Próximamente añadiremos la visualización para esta opción.")
 elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objetivo de ahorro?":
     st.info("👉 También lo haremos visual 😉")
 
