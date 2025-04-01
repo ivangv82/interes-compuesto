@@ -214,8 +214,89 @@ elif pregunta == "¿Cuánto necesito ahorrar en cada período para lograr mi obj
     }))
 
 
-# ---------- LAS OTRAS OPCIONES (solo texto de momento, luego se mejora) ----------
-
+# ---------- OPCIÓN 4: ¿QUÉ PORCENTAJE DE INTERÉS NECESITO? ----------
 elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objetivo de ahorro?":
-    st.info("👉 También lo haremos visual 😉")
+    st.subheader("¿Qué porcentaje de interés necesito para llegar a mi objetivo?")
+
+    objetivo = st.number_input("Objetivo de ahorro (€)", value=10000.0)
+    inicial = st.number_input("Balance inicial (€)", value=1000.0)
+    deposito = st.number_input("Depósito periódico (€)", value=100.0)
+    años = st.number_input("Duración (años)", value=10)
+
+    n = int(años * m)
+
+    def f(i):
+        if i == 0:
+            return inicial + deposito * n - objetivo
+        if momento == "Final del período":
+            return inicial * (1 + i)**n + deposito * ((1 + i)**n - 1) / i - objetivo
+        else:
+            return inicial * (1 + i)**n + deposito * (1 + i) * ((1 + i)**n - 1) / i - objetivo
+
+    # Búsqueda binaria para encontrar la tasa periódica necesaria
+    low = 1e-8
+    high = 1.0
+    i_sol = None
+
+    for _ in range(100):
+        mid = (low + high) / 2
+        if abs(f(mid)) < 1e-6:
+            i_sol = mid
+            break
+        if f(low) * f(mid) < 0:
+            high = mid
+        else:
+            low = mid
+    else:
+        i_sol = mid
+
+    interes_anual_necesario = i_sol * m * 100
+
+    st.markdown(f"### Necesitas un interés anual de aproximadamente **{interes_anual_necesario:.2f} %**")
+    st.markdown(f"Para alcanzar {objetivo:,.2f} € en {años:.0f} años, aportando {deposito:.2f} € cada {frecuencia.lower()}")
+
+    # Simulación de evolución con la tasa encontrada
+    saldo = inicial
+    historial = []
+
+    for periodo in range(1, n + 1):
+        if momento == "Inicio del período":
+            saldo += deposito
+        saldo *= (1 + i_sol)
+        if momento == "Final del período":
+            saldo += deposito
+        if periodo % m == 0:
+            historial.append({
+                "Año": periodo // m,
+                "Depósito acumulado": deposito * periodo,
+                "Interés acumulado": saldo - inicial - deposito * periodo,
+                "Balance": saldo
+            })
+
+    df = pd.DataFrame(historial)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Interés anual necesario", f"{interes_anual_necesario:.2f} %")
+    col2.metric("Depósitos totales", f"{deposito * n:,.2f} €")
+    col3.metric("Balance final", f"{saldo:,.2f} €")
+
+    # ---------- GRÁFICO ----------
+    st.subheader("Evolución del capital")
+    fig, ax = plt.subplots()
+    ax.plot(df["Año"], df["Balance"], label="Balance acumulado", marker='o')
+    ax.axhline(y=objetivo, color='orange', linestyle='--', label="Objetivo")
+    ax.set_xlabel("Años")
+    ax.set_ylabel("€")
+    ax.set_title("Ahorro acumulado con interés requerido")
+    ax.legend()
+    st.pyplot(fig)
+
+    # ---------- TABLA ----------
+    st.subheader("Detalle año a año")
+    st.dataframe(df.style.format({
+        "Depósito acumulado": "€{:,.2f}",
+        "Interés acumulado": "€{:,.2f}",
+        "Balance": "€{:,.2f}"
+    }))
+
 
