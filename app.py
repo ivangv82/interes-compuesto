@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-st.title("Calculadora de Interés Compuesto - Visualización Mejorada")
+st.title("Calculadora de Interés Compuesto")
 
 # --------------------
 # Entradas en la barra lateral
