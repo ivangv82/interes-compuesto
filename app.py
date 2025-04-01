@@ -225,9 +225,55 @@ elif pregunta == "¿Qué porcentaje de interés necesito para llegar a mi objeti
 
     n = int(años * m)
 
-    def f(i):
-        if i == 0:
-            return inicial + deposito * n - objetivo
+        # Primero comprobamos si con 0% ya se alcanza
+    if momento == "Final del período":
+        fv_0 = inicial + deposito * n
+    else:
+        fv_0 = inicial
+        for _ in range(n):
+            fv_0 += deposito
+
+    if fv_0 >= objetivo:
+        interes_anual_necesario = 0
+        saldo = fv_0
+    else:
+        def f(i):
+            if i == 0:
+                return inicial + deposito * n - objetivo
+            if momento == "Final del período":
+                return inicial * (1 + i)**n + deposito * ((1 + i)**n - 1) / i - objetivo
+            else:
+                return inicial * (1 + i)**n + deposito * (1 + i) * ((1 + i)**n - 1) / i - objetivo
+
+        # Búsqueda binaria para encontrar la tasa periódica necesaria
+        low = 1e-8
+        high = 1.0
+        i_sol = None
+
+        for _ in range(100):
+            mid = (low + high) / 2
+            if abs(f(mid)) < 1e-6:
+                i_sol = mid
+                break
+            if f(low) * f(mid) < 0:
+                high = mid
+            else:
+                low = mid
+        else:
+            i_sol = mid
+
+        interes_anual_necesario = i_sol * m * 100
+
+        # Recalcular saldo final para la visualización
+        r = i_sol
+        saldo = inicial
+        for _ in range(n):
+            if momento == "Inicio del período":
+                saldo += deposito
+            saldo *= (1 + r)
+            if momento == "Final del período":
+                saldo += deposito
+
         if momento == "Final del período":
             return inicial * (1 + i)**n + deposito * ((1 + i)**n - 1) / i - objetivo
         else:
